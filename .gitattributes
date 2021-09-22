@@ -1,0 +1,1 @@
+xv6-riscv/gdb/riscv64-unknown-elf-gdb filter=lfs diff=lfs merge=lfs -text
