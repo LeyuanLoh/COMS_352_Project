@@ -95,7 +95,7 @@ struct proc {
   int xstate;                  // Exit status to be returned to parent's wait
   int pid;                     // Process ID
 
-  int ticks;                    // Leyuan & Lee
+  int fullticks;                    // Leyuan & Lee
 
   // proc_tree_lock must be held when using this:
   struct proc *parent;         // Parent process
@@ -110,7 +110,12 @@ struct proc {
   struct inode *cwd;           // Current directory
   char name[16];               // Process name (debugging)
 
-
+  struct proc *next;
+  uint64 level;
 };
  
  uint64 kgetpstat(struct pstat* ps); // Leyuan & Lee
+
+
+
+ 
