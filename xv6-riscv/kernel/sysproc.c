@@ -95,3 +95,24 @@ sys_uptime(void)
   release(&tickslock);
   return xticks;
 }
+
+//Added new sys call
+uint64
+sys_getpstat(void)
+{
+  struct proc *p = myproc();
+  uint64 upstat; // user virtual address, pointing to a struct pstat
+  struct pstat kpstat; // struct pstat in kernel memory
+
+  // get system call argument
+  if(argaddr(0, &upstat) < 0)
+    return -1;
+  
+ // TODO: define kernel side kgetpstat(struct pstat* ps), its purpose is to fill the values into pstat.
+  uint64 result = kgetpstat(&kpstat);
+
+  // copy pstat from kernel memory to user memory
+  if(copyout(p->pagetable, upstat, (char *)&kpstat, sizeof(kpstat)) < 0)
+    return -1;
+  return result;
+}
