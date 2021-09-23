@@ -1,3 +1,5 @@
+//Leyuan & Lee
+
 /*** Adapted fromhttps://github.com/remzi-arpacidusseau/ostep-projects/tree/master/scheduling-xv6-lottery**/
 #ifndef _PSTAT_H_
 #define _PSTAT_H_

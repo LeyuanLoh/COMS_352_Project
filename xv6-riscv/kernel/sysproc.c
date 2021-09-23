@@ -6,6 +6,7 @@
 #include "memlayout.h"
 #include "spinlock.h"
 #include "proc.h"
+#include "pstat.h"
 
 uint64
 sys_exit(void)
@@ -96,6 +97,7 @@ sys_uptime(void)
   return xticks;
 }
 
+// Leyuan & Lee
 //Added new sys call
 uint64
 sys_getpstat(void)
@@ -108,7 +110,7 @@ sys_getpstat(void)
   if(argaddr(0, &upstat) < 0)
     return -1;
   
- // TODO: define kernel side kgetpstat(struct pstat* ps), its purpose is to fill the values into pstat.
+ // TODO: define kernel side kgetpstat(struct pstat* ps), its purpose is to fill the values into kpstat.
   uint64 result = kgetpstat(&kpstat);
 
   // copy pstat from kernel memory to user memory

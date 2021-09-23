@@ -5,6 +5,7 @@
 #include "spinlock.h"
 #include "proc.h"
 #include "defs.h"
+#include "pstat.h"
 
 struct cpu cpus[NCPU];
 
@@ -653,4 +654,16 @@ procdump(void)
     printf("%d %s %s", p->pid, state, p->name);
     printf("\n");
   }
+}
+
+//Leyuan & Lee
+uint64 kgetpstat(struct pstat* ps){
+  for(int i = 0; i < NPROC; ++i){
+    struct proc *p = proc + i;
+    ps->inuse[i] == p-> state == UNUSED? 0 : 1;
+    ps->ticks[i] = p->ticks;
+    ps->pid[i] = p-> pid;
+    ps->queue[i] = 0;
+  }
+  return 0;
 }
