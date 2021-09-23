@@ -1,5 +1,6 @@
 struct stat;
 struct rtcdate;
+struct pstat;
 
 // system calls
 int fork(void);
@@ -23,7 +24,7 @@ int getpid(void);
 char* sbrk(int);
 int sleep(int);
 int uptime(void);
-int getpstat(struct stat*); //Leyuan & Lee
+int getpstat(struct pstat*); //Leyuan & Lee
 
 // ulib.c
 int stat(const char*, struct stat*);

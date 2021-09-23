@@ -119,6 +119,7 @@ allocproc(void)
 
 found:
   p->pid = allocpid();
+  p->ticks = 0;
   p->state = USED;
 
   // Allocate a trapframe page.
@@ -498,6 +499,7 @@ yield(void)
 {
   struct proc *p = myproc();
   acquire(&p->lock);
+  p->ticks++;
   p->state = RUNNABLE;
   sched();
   release(&p->lock);
@@ -660,7 +662,7 @@ procdump(void)
 uint64 kgetpstat(struct pstat* ps){
   for(int i = 0; i < NPROC; ++i){
     struct proc *p = proc + i;
-    ps->inuse[i] == p-> state == UNUSED? 0 : 1;
+    ps->inuse[i] = p-> state == UNUSED? 0 : 1;
     ps->ticks[i] = p->ticks;
     ps->pid[i] = p-> pid;
     ps->queue[i] = 0;

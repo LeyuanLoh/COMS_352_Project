@@ -1,3 +1,5 @@
+#include "pstat.h"
+
 // Saved registers for kernel context switches.
 struct context {
   uint64 ra;
@@ -110,3 +112,5 @@ struct proc {
 
 
 };
+ 
+ uint64 kgetpstat(struct pstat* ps); // Leyuan & Lee
