@@ -36,36 +36,33 @@ struct spinlock wait_lock;
 // Leyuan & Lee
 void enqueue(struct proc *p)
 {
-  uint64 offset = p->level -1;
-  
-  struct qentry *q = qtable + NPROC;
-  uint64 pindex = p - proc;
-  if (p->level == 1)
+   if(p->level >3)
   {
-    if(q->next == EMPTY)
+    printf("enqueue level error");
+  }
+  uint64 offset = p->level -1;
+  struct qentry *mlq = qtable + NPROC +offset;
+  uint64 pindex = p - proc;
+  struct qentry *pinqtable = qtable + pindex;
+  
+    if(mlq->next == EMPTY)
     {
-      q->next = pindex;
-      q->prev = pindex;
-
-      struct qentry *pinqtable = qtable + pindex;
+      mlq->next = pindex;
+      mlq->prev = pindex;
+      
       pinqtable->next = NPROC;
-      pinqtable->previous = NPROC;
+      pinqtable->prev = NPROC;
     }
     else
     {
-      
+      uint64 lastProcess = mlq->prev;
+      struct qentry *lastQEntry = qtable + lastProcess;
+      lastQEntry->next = pindex;
+      pinqtable->prev = lastProcess;
+      pinqtable->next = NPROC +offset;
+      mlq->prev = pindex;
+
     }
-  }
-  else if (p->level == 2)
-  {
-  }
-  else if (p->level == 3)
-  {
-  }
-  else
-  {
-    printf("enqueue error")
-  }
 }
 
 struct proc *dequeue()
@@ -328,6 +325,8 @@ void userinit(void)
   p->cwd = namei("/");
 
   p->state = RUNNABLE;
+  //Leyuan & Lee
+  enqueue(p);
 
   release(&p->lock);
 }
@@ -402,6 +401,8 @@ int fork(void)
 
   acquire(&np->lock);
   np->state = RUNNABLE;
+  //Leyuan & Lee
+  enqueue(np);
   release(&np->lock);
 
   return pid;
@@ -621,6 +622,7 @@ void yield(void)
     if(p->level < 3){
       p-> level++;
     }
+    enqueue(p); //might need to discuss
     sched();
     release(&p->lock);
   }
@@ -691,6 +693,8 @@ void wakeup(void *chan)
       if (p->state == SLEEPING && p->chan == chan)
       {
         p->state = RUNNABLE;
+        //Leyuan & Lee
+        enqueue(p);
       }
       release(&p->lock);
     }
@@ -714,6 +718,8 @@ int kill(int pid)
       {
         // Wake process from sleep().
         p->state = RUNNABLE;
+        //Leyuan & Lee
+        enqueue(p);
       }
       release(&p->lock);
       return 0;
