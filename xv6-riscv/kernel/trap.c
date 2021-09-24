@@ -207,6 +207,26 @@ devintr()
     if(cpuid() == 0){
       clockintr();
     }
+
+    // Leyuan & Lee
+    struct proc *p = myproc();
+    p-> ticks++;
+
+    if(p->level == 1){
+        //do nothing
+    }else if(p->level == 2){
+      if(p-> ticks < 2){
+        return 0;
+      }
+    }else if(p-> level == 3){
+      if(p-> ticks < 4){
+        return 0;
+      }
+    }else{
+      //error
+      printf("unexpected queue level %d\n", p-> level);
+      return 0;
+    }
     
     // acknowledge the software interrupt by clearing
     // the SSIP bit in sip.

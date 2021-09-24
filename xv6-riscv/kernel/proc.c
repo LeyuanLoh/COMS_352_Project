@@ -11,6 +11,10 @@ struct cpu cpus[NCPU];
 
 struct proc proc[NPROC];
 
+struct proc *tail;
+
+struct proc *head;
+
 struct proc *initproc;
 
 int nextpid = 1;
@@ -46,7 +50,7 @@ proc_mapstacks(pagetable_t kpgtbl) {
 // initialize the proc table at boot time.
 void
 procinit(void)
-{
+{ 
   struct proc *p;
   
   initlock(&pid_lock, "nextpid");
@@ -119,7 +123,7 @@ allocproc(void)
 
 found:
   p->pid = allocpid();
-  p->fullticks = 0;
+  p->ticks = 0;
   p->state = USED;
 
   // Allocate a trapframe page.
@@ -498,8 +502,18 @@ void
 yield(void)
 {
   struct proc *p = myproc();
+
+  //Leyuan & Lee
+  p-> ticks ==0;
+  if(p-> level < 3){
+    p-> level ++;
+  }
+  tail->next = head;
+  head = head-> next;
+  tail = tail-> next;
+  tail-> next = 0;
+  
   acquire(&p->lock);
-  p->fullticks++;
   p->state = RUNNABLE;
   sched();
   release(&p->lock);
@@ -663,7 +677,7 @@ uint64 kgetpstat(struct pstat* ps){
   for(int i = 0; i < NPROC; ++i){
     struct proc *p = proc + i;
     ps->inuse[i] = p-> state == UNUSED? 0 : 1;
-    ps->ticks[i] = p->fullticks;
+    ps->ticks[i] = p->ticks;
     ps->pid[i] = p-> pid;
     ps->queue[i] = 0;
   }
