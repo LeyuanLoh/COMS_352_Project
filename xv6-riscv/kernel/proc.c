@@ -86,7 +86,7 @@ struct proc *dequeue()
       return p;
     }
   }
-  return -1;
+  return 0;
 }
 
 // Allocate a page for each process's kernel stack.
@@ -561,7 +561,7 @@ void scheduler(void)
     //   release(&p->lock);
     // }
 
-    while(p = dequeue() != -1){
+    while((p = dequeue()) != 0){
       acquire(&p->lock);
       if (p->state == RUNNABLE)
       {
