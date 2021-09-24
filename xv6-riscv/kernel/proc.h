@@ -112,8 +112,14 @@ struct proc {
 
   //Leyuan & Lee
   int ticks;                   
-  struct proc *next;  
   uint64 level; //1 2 3
+};
+
+// Leyuan & Lee
+#define EMPTY (-1)
+struct qentry {
+ uint64 prev;
+ uint64 next;
 };
  
  uint64 kgetpstat(struct pstat* ps); // Leyuan & Lee
