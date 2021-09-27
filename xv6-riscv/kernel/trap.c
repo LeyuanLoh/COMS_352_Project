@@ -207,10 +207,6 @@ devintr()
     if(cpuid() == 0){
       clockintr();
     }
-
-    
-
-    
     
     // acknowledge the software interrupt by clearing
     // the SSIP bit in sip.
@@ -218,6 +214,7 @@ devintr()
 
     return 2;
   } else {
+    
     return 0;
   }
 }

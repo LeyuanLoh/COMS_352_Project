@@ -136,6 +136,7 @@ UPROGS=\
 	$U/_wc\
 	$U/_zombie\
 	$U/_pstat\
+	$U/_schedtest\
 	
 
 fs.img: mkfs/mkfs README $(UPROGS)
@@ -152,7 +153,7 @@ clean:
 	$(UPROGS)
 
 ifndef CPUS
-CPUS := 3
+CPUS := 1
 endif
 
 QEMUOPTS = -machine virt -bios none -kernel $K/kernel -m 128M -smp $(CPUS) -nographic

@@ -16,6 +16,7 @@ struct proc proc[NPROC];
 struct qentry qtable[QTABLE_SIZE];
 //head == next and tail == prev
 
+uint global_ticks;
 
 struct proc *initproc;
 
@@ -36,54 +37,82 @@ struct spinlock wait_lock;
 // Leyuan & Lee
 void enqueue(struct proc *p)
 {
-   if(p->level >3)
+  if (p->level > 3)
   {
     printf("enqueue level error");
   }
-  uint64 offset = p->level -1;
-  struct qentry *mlq = qtable + NPROC +offset;
+  uint64 offset = p->level - 1;
+  struct qentry *mlq = qtable + NPROC + offset;
   uint64 pindex = p - proc;
   struct qentry *pinqtable = qtable + pindex;
-  
-    if(mlq->next == EMPTY)
-    {
-      mlq->next = pindex;
-      mlq->prev = pindex;
-      
-      pinqtable->next = NPROC;
-      pinqtable->prev = NPROC;
-    }
-    else
-    {
-      uint64 lastProcess = mlq->prev;
-      struct qentry *lastQEntry = qtable + lastProcess;
-      lastQEntry->next = pindex;
-      pinqtable->prev = lastProcess;
-      pinqtable->next = NPROC +offset;
-      mlq->prev = pindex;
 
-    }
+  if (mlq->next == EMPTY)
+  {
+    
+
+    pinqtable->next = NPROC + offset;
+    pinqtable->prev = NPROC + offset;
+
+   //Problem here
+
+    mlq->next = pindex;
+    mlq->prev = pindex;
+
+    // if(p->pid == 2){
+    //   printf("Qtable next previous %d %d\n", mlq->next, mlq->prev);
+    //   printf("Pindex %d \n", pindex);
+    // }
+  }
+  else
+  {
+    uint64 lastProcess = mlq->prev;
+    struct qentry *lastQEntry = qtable + lastProcess;
+    lastQEntry->next = pindex;
+    pinqtable->prev = lastProcess;
+    pinqtable->next = NPROC + offset;
+    mlq->prev = pindex;
+  }
 }
 
 struct proc *dequeue()
 {
+
   struct qentry *q;
 
   for (q = qtable + NPROC; q < &qtable[QTABLE_SIZE]; q++)
   {
-    if (q->next != EMPTY){
+    if (q->next != EMPTY)
+    {
+
+      uint64 qindex = q - qtable;
+
+      struct proc *p;
+      p = proc + q->next;
+
       struct qentry *qfirst;
       qfirst = qtable + q->next;
 
       struct qentry *qsecond;
       qsecond = qtable + qfirst->next;
 
-      q-> next = qfirst->next;
-      qsecond-> prev = qfirst->prev; 
+      q->next = qfirst->next;
+      qsecond->prev = qfirst->prev;
 
-      struct proc *p;
-      p = proc + q->next;
-      return p;
+      if (q->next == qindex && q->prev == qindex)
+      {
+        q->next = EMPTY;
+        q->prev = EMPTY;
+      }
+
+      if (p->pid == 0)
+      {
+        //printf("Pid = 0\n");
+        return 0;
+      }
+      else
+      {
+        return p;
+      }
     }
   }
   return 0;
@@ -119,6 +148,9 @@ void procinit(void)
     initlock(&p->lock, "proc");
     p->kstack = KSTACK((int)(p - proc));
   }
+
+  //Leyuan & Lee
+  ticks = 0;
 
   struct qentry *q;
 
@@ -327,7 +359,6 @@ void userinit(void)
   p->state = RUNNABLE;
   //Leyuan & Lee
   enqueue(p);
-
   release(&p->lock);
 }
 
@@ -536,7 +567,6 @@ void scheduler(void)
   struct proc *p;
   struct cpu *c = mycpu();
 
-  c->proc = 0;
   for (;;)
   {
     // Avoid deadlock by ensuring that devices can interrupt.
@@ -561,7 +591,9 @@ void scheduler(void)
     //   release(&p->lock);
     // }
 
-    while((p = dequeue()) != 0){
+    while ((p = dequeue()) != 0)
+    {
+      // printf("Pid: %d, Level: %d\n",p->pid,p->level);
       acquire(&p->lock);
       if (p->state == RUNNABLE)
       {
@@ -613,14 +645,78 @@ void yield(void)
   struct proc *p = myproc();
 
   // Leyuan & Lee
-  p->ticks++;
+  global_ticks++;
+  if (global_ticks % 32 == 0)
+  {
+    //first case queue 1 == empty
+    //head of queue 1 => first element of queue 2
+    //second case queue 1 != empty
+    //last element of q1 => first elment of queue 2
+    struct qentry *Q3 = qtable + NPROC + 2;
+    struct qentry *Q2 = qtable + NPROC + 1;
+    struct qentry *Q1 = qtable + NPROC;
 
+    // uint64 lQ1 = Q1->prev;
+    // uint64 fQ1 = Q1->next;
+
+    if (Q3->next != EMPTY)
+    {
+      if (Q2->next != EMPTY)
+      {
+        uint64 lQ3 = Q3->prev;
+        uint64 fQ3 = Q3->next;
+        struct qentry *lq3QTable = qtable + lQ3;
+        struct qentry *fq3QTable = qtable + fQ3;
+        uint64 lQ2 = Q2->prev;
+        struct qentry *lq2QTable = qtable + lQ2;
+        lq2QTable->next = fQ3;
+        fq3QTable->prev = lQ2;
+        lq3QTable->next = Q2 - qtable;
+        Q2->prev = lQ3;
+      }
+      else
+      {
+        //Q2 empty
+        Q2->next = Q3->next;
+        Q2->prev = Q3->prev;
+      }
+      Q3->next = EMPTY;
+      Q3->prev = EMPTY;
+    }
+
+    if (Q2->next != EMPTY)
+    {
+      if (Q1->next != EMPTY)
+      {
+        uint64 lQ2 = Q2->prev;
+        uint64 fQ2 = Q2->next;
+        struct qentry *lq2QTable = qtable + lQ2;
+        struct qentry *fq2QTable = qtable + fQ2;
+        uint64 lQ1 = Q1->prev;
+        struct qentry *lq1QTable = qtable + lQ1;
+        lq1QTable->next = fQ2;
+        fq2QTable->prev = lQ1;
+        lq2QTable->next = Q1 - qtable;
+        Q1->prev = lQ2;
+      }
+      else
+      {
+        //Q1 empty
+        Q1->next = Q2->next;
+        Q1->prev = Q2->prev;
+      }
+      Q2->next = EMPTY;
+      Q2->prev = EMPTY;
+    }
+  }
+  p->ticks++;
   if (p->level == 1 || (p->level == 2 && p->ticks >= 2) || (p->level == 3 && p->ticks >= 4))
   {
     acquire(&p->lock);
     p->state = RUNNABLE;
-    if(p->level < 3){
-      p-> level++;
+    if (p->level < 3)
+    {
+      p->level++;
     }
     enqueue(p); //might need to discuss
     sched();
@@ -800,7 +896,7 @@ uint64 kgetpstat(struct pstat *ps)
     ps->inuse[i] = p->state == UNUSED ? 0 : 1;
     ps->ticks[i] = p->ticks;
     ps->pid[i] = p->pid;
-    ps->queue[i] = 0;
+    ps->queue[i] = p->level - 1;
   }
   return 0;
 }
