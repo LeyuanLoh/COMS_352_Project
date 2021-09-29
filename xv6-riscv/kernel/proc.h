@@ -111,17 +111,19 @@ struct proc {
 
 
   //Leyuan & Lee
-  int ticks;                   
+  int ticks;     //ticks of process running in a queue          
   uint64 level; //1 2 3
 };
 
 // Leyuan & Lee
+// Priority queue mentioned in project description.
 #define EMPTY (-1)
 struct qentry {
  uint64 prev;
  uint64 next;
 };
  
+ //Helper method to pass useful information to user side.
  uint64 kgetpstat(struct pstat* ps); // Leyuan & Lee
 
 

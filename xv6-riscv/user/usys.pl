@@ -36,4 +36,4 @@ entry("getpid");
 entry("sbrk");
 entry("sleep");
 entry("uptime");
-entry("getpstat") //Leyuan & Lee
+entry("getpstat") //Leyuan & Lee For systemcall

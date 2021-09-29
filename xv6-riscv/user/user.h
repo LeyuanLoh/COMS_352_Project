@@ -24,7 +24,7 @@ int getpid(void);
 char* sbrk(int);
 int sleep(int);
 int uptime(void);
-int getpstat(struct pstat*); //Leyuan & Lee
+int getpstat(struct pstat*); //Leyuan & Lee //To include it as sytemcall
 
 // ulib.c
 int stat(const char*, struct stat*);

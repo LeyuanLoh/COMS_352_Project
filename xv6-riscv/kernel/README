@@ -1,0 +1,46 @@
+Name & netid:
+Leyuan Loh (leyuan)
+Bo Sheng Lee (lee0717)
+
+Files edited:
+Makefile        
+kernel/proc.c
+kernel/proc.h
+kernel/syscall.c
+kernel/syscall.h
+kernel/sysproc.c 
+kernel/pstat.h 
+
+user/pstat.c 
+user/user.h     
+user/usys.pl
+
+Progress: 
+As from our testing, we think that we have complemented all of the features corretly, including the priority boost. 
+For the priority queue, we have used the second method (qtable) described in the project description. 
+We have placed priority boost, and preempting featureus in yield() in proc.c. For the priority boost, we have a global ticks counter
+- global_ticks. In yield(), we check if global_ticks % 32 == 0, then we do priority boost. 
+
+Result:
+
+After running
+
+$ schedtest 4 10000000 &
+$   
+$ schedtest 0 40000000 &
+
+we get
+
+pid     ticks   queue
+1       0       0         //init
+2       0       0         //init
+9       0       0         //pstat
+4       0       0         //first schedtest
+6       1       1         //second schedtest
+8       24      2         //third schedtest
+
+pid 3 = sh
+pid 5 = sh
+pid 6 = sh
+
+Please note that sometimes the second schedtest is in queue 0. 

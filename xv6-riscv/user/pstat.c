@@ -1,4 +1,8 @@
-//Leyuan & Lee
+/**
+@author Leyuan Loh , Bo Sheng Lee
+To implement the system call for pstat
+**/
+//A program that is required to print usefull information about used process.
 #include "kernel/types.h"
 #include "kernel/stat.h"
 #include "user/user.h"

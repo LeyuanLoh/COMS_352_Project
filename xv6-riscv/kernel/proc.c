@@ -11,12 +11,11 @@ struct cpu cpus[NCPU];
 
 struct proc proc[NPROC];
 
-//Leyuan & Lee
-#define QTABLE_SIZE (NPROC + NQUEUES)
-struct qentry qtable[QTABLE_SIZE];
-//head == next and tail == prev
-
-uint global_ticks;
+// Leyuan & Lee
+#define NQUEUES   3      // define the number of queue
+#define QTABLE_SIZE (NPROC + NQUEUES)   //define the size of qtable which is size of Proc tabke + number of queue 
+struct qentry qtable[QTABLE_SIZE];    //create a qtable to implement mlq
+uint global_ticks;    // a counter to calculate the tick for the whole system.
 
 struct proc *initproc;
 
@@ -34,34 +33,33 @@ extern char trampoline[]; // trampoline.S
 // must be acquired before any p->lock.
 struct spinlock wait_lock;
 
-// Leyuan & Lee
+/*
+ *@Author: Leyuan & Lee 
+  Implement enqueue for the mlq to add process into the mlq
+*/
 void enqueue(struct proc *p)
 {
+  //checking the level not over level 3
   if (p->level > 3)
   {
     printf("enqueue level error");
   }
+  //create offset since we start from level 1-3 but in the qtable is 0-2
   uint64 offset = p->level - 1;
   struct qentry *mlq = qtable + NPROC + offset;
   uint64 pindex = p - proc;
   struct qentry *pinqtable = qtable + pindex;
 
+  // if there is no process in the queue level
   if (mlq->next == EMPTY)
-  {
-
+  { 
     pinqtable->next = NPROC + offset;
     pinqtable->prev = NPROC + offset;
 
-    //Problem here
-
     mlq->next = pindex;
     mlq->prev = pindex;
-
-    // if(p->pid == 2){
-    //   printf("Qtable next previous %d %d\n", mlq->next, mlq->prev);
-    //   printf("Pindex %d \n", pindex);
-    // }
   }
+  // if there is process in the queue level
   else
   {
     uint64 lastProcess = mlq->prev;
@@ -72,22 +70,29 @@ void enqueue(struct proc *p)
     mlq->prev = pindex;
   }
 }
-
+/**
+ * @Authors: Leyuan & Lee
+ * Implement dequeue for taking out the process from the mlq
+ * return process pointer that is dequeueing
+**/ 
 struct proc *dequeue()
 {
-
   struct qentry *q;
 
+  // go through every level of queue to look for process to dequeue
   for (q = qtable + NPROC; q < &qtable[QTABLE_SIZE]; q++)
   {
     if (q->next != EMPTY)
     {
 
+      //index of the queue
       uint64 qindex = q - qtable;
 
+      //process pointer
       struct proc *p;
       p = proc + q->next;
 
+      // checking for error, if meesage below print means there is error
       if (qindex == 63 && p->level == 1)
       {
         printf("Process with level: %d is on queue: 0", p->level - 1);
@@ -101,20 +106,25 @@ struct proc *dequeue()
         printf("Process with level: %d is on queue: 2", p->level - 1);
       }
 
+      //get the first process in the queue level
       struct qentry *qfirst;
       qfirst = qtable + q->next;
 
+      //get the second process in the queue level
       struct qentry *qsecond;
       qsecond = qtable + qfirst->next;
 
+      //swapping
       q->next = qfirst->next;
       qsecond->prev = qindex;
 
-      if (qfirst->prev != qindex)
+      //checking for error, if message below is print, means there is an error
+      if  (qfirst->prev != qindex)
       {
         printf("In Qtable, the previous of dequeuing process is not head.\n");
       }
 
+      //checking if the queue level is empty, if it is empty, change the value of prev and next
       if (q->next == qindex && q->prev == qindex)
       {
         q->next = EMPTY;
@@ -122,11 +132,10 @@ struct proc *dequeue()
       }
 
       //remove process from qtable
-
       qfirst->next = EMPTY;
-
       qfirst->prev = EMPTY;
 
+      //checking code
       if (p->pid == 0)
       {
         printf("Pid = 0\n");
@@ -174,12 +183,10 @@ void procinit(void)
 
   //Leyuan & Lee
   //Initialize qtable
-  ticks = 0;
-
   struct qentry *q;
-
   for (q = qtable; q < &qtable[QTABLE_SIZE]; q++)
   {
+    // let all the process in qtable prev and next = EMPTY (-1)
     q->prev = EMPTY;
     q->next = EMPTY;
   }
@@ -296,7 +303,8 @@ freeproc(struct proc *p)
   p->pagetable = 0;
   p->sz = 0;
   p->pid = 0;
-  p->ticks = 0; //Leyuan & Lee
+  //Leyuan & Lee
+  p->ticks = 0;  //initialize the tick of process
   p->parent = 0;
   p->name[0] = 0;
   p->chan = 0;
@@ -380,10 +388,10 @@ void userinit(void)
   safestrcpy(p->name, "initcode", sizeof(p->name));
   p->cwd = namei("/");
 
-  global_ticks = 0; //Leyuan & Lee
-  p->state = RUNNABLE;
   //Leyuan & Lee
-  enqueue(p);
+  global_ticks = 0; // initialize the global ticks
+  p->state = RUNNABLE;
+  enqueue(p); // add the process into mlq
   release(&p->lock);
 }
 
@@ -458,7 +466,7 @@ int fork(void)
   acquire(&np->lock);
   np->state = RUNNABLE;
   //Leyuan & Lee
-  enqueue(np);
+  enqueue(np);  //add the process into mlq
   release(&np->lock);
 
   return pid;
@@ -592,33 +600,15 @@ void scheduler(void)
   struct proc *p;
   struct cpu *c = mycpu();
 
+  //Leyuan & Lee
   for (;;)
   {
     // Avoid deadlock by ensuring that devices can interrupt.
     intr_on();
 
-    // for (p = proc; p < &proc[NPROC]; p++)
-    // {
-    //   acquire(&p->lock);
-    //   if (p->state == RUNNABLE)
-    //   {
-    //     // Switch to chosen process.  It is the process's job
-    //     // to release its lock and then reacquire it
-    //     // before jumping back to us.
-    //     p->state = RUNNING;
-    //     c->proc = p;
-    //     swtch(&c->context, &p->context);
-
-    //     // Process is done running for now.
-    //     // It should have changed its p->state before coming back.
-    //     c->proc = 0;
-    //   }
-    //   release(&p->lock);
-    // }
-
+    //use a while loop to dequeue the process to run
     while ((p = dequeue()) != 0)
     {
-      // printf("Pid: %d, Level: %d\n",p->pid,p->level);
       acquire(&p->lock);
       if (p->state == RUNNABLE)
       {
@@ -670,49 +660,47 @@ void yield(void)
   struct proc *p = myproc();
 
   // Leyuan & Lee
-  global_ticks++;
+  global_ticks++;  //increament the global ticks/
+  //Priority Boost for every 32 ticks 
   if (global_ticks % 32 == 0)
   {
-    // printf("\npriority booast \n");
-    //first case queue 1 == empty
-    //head of queue 1 => first element of queue 2
-    //second case queue 1 != empty
-    //last element of q1 => first elment of queue 2
+    //create a pointer to three queue level
     struct qentry *Q3 = qtable + NPROC + 2;
     struct qentry *Q2 = qtable + NPROC + 1;
     struct qentry *Q1 = qtable + NPROC;
 
-    // uint64 lQ1 = Q1->prev;
-    // uint64 fQ1 = Q1->next;
-
+    //first we boost the process in level 3 to level 2
+    //check whther there is process in Q3 casue if no we have need to boost up
     if (Q3->next != EMPTY)
     {
       uint64 lQ3 = Q3->prev;
       uint64 fQ3 = Q3->next;
       struct qentry *lq3QTable = qtable + lQ3;
       struct qentry *fq3QTable = qtable + fQ3;
+      //check whether the quue levl 2 is empty cause if yes the step would be different
       if (Q2->next != EMPTY)
       {
-
         uint64 lQ2 = Q2->prev;
         struct qentry *lq2QTable = qtable + lQ2;
-        lq2QTable->next = fQ3;
+        lq2QTable->next = fQ3;  
         fq3QTable->prev = lQ2;
         lq3QTable->next = Q2 - qtable;
         Q2->prev = lQ3;
       }
       else
       {
-        //Q2 empty
+        // if Q2 is empty
         Q2->next = Q3->next;
         Q2->prev = Q3->prev;
         lq3QTable->next = Q2 - qtable;
         fq3QTable->prev = Q2 - qtable;
       }
+      //make sure the queue level 3 orev and next is EMPTY now 
       Q3->next = EMPTY;
       Q3->prev = EMPTY;
     }
 
+    //Then, we boost the process in level 2 to level 1
     if (Q2->next != EMPTY)
     {
       uint64 lQ2 = Q2->prev;
@@ -721,7 +709,6 @@ void yield(void)
       struct qentry *fq2QTable = qtable + fQ2;
       if (Q1->next != EMPTY)
       {
-
         uint64 lQ1 = Q1->prev;
         struct qentry *lq1QTable = qtable + lQ1;
         lq1QTable->next = fQ2;
@@ -731,32 +718,35 @@ void yield(void)
       }
       else
       {
-        //Q1 empty
+        //if Q1 is empty
         Q1->next = Q2->next;
         Q1->prev = Q2->prev;
         lq2QTable->next = Q1 - qtable;
         fq2QTable->prev = Q1 - qtable;
       }
+      //make sure the queue level prev and next is EMPTY now
       Q2->next = EMPTY;
       Q2->prev = EMPTY;
     }
 
+    //reset all the process level and ticks
     for (p = proc; p < &proc[NPROC]; p++)
     {
       p->level = 1;
       p->ticks = 0;
     }
   }
-  p->ticks++;
+  p->ticks++; 
+  //check whether a process need to be put to the other queue level or not
   if (p->level == 1 || (p->level == 2 && p->ticks >= 2) || (p->level == 3 && p->ticks >= 4))
   {
     acquire(&p->lock);
     p->state = RUNNABLE;
     if (p->level < 3)
     {
-      p->level++;
+      p->level++; //increment the level of process
     }
-    enqueue(p); //might need to discuss
+    enqueue(p);
     sched();
     release(&p->lock);
   }
@@ -828,7 +818,7 @@ void wakeup(void *chan)
       {
         p->state = RUNNABLE;
         //Leyuan & Lee
-        enqueue(p);
+        enqueue(p);   // add process to mlq
       }
       release(&p->lock);
     }
@@ -853,7 +843,7 @@ int kill(int pid)
         // Wake process from sleep().
         p->state = RUNNABLE;
         //Leyuan & Lee
-        enqueue(p);
+        enqueue(p);   //add process to ml
       }
       release(&p->lock);
       return 0;
@@ -925,7 +915,10 @@ void procdump(void)
   }
 }
 
-//Leyuan & Lee
+/*
+*@Author: Leyuan & Lee
+*A helper function to send usefull information to the user side.
+*/
 uint64 kgetpstat(struct pstat *ps)
 {
   for (int i = 0; i < NPROC; ++i)
