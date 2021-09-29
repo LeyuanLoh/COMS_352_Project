@@ -1,12 +1,11 @@
-{
-    // See https://go.microsoft.com/fwlink/?LinkId=733558
-    // for the documentation about the tasks.json format
+
+  {
     "version": "2.0.0",
     "tasks": [
       {
         "label": "Run make qemu-gdb",
         "type": "shell",
-        "command": "export GDB_PORT=26000; make qemu-gdb",
+        "command": "export GDB_PORT=26000 CPUS=1; make qemu-gdb",
         "isBackground": true,
         "problemMatcher": [
           {
@@ -21,7 +20,7 @@
             "background": {
               "activeOnStart": true,
               "beginsPattern": ".",
-              "endsPattern": ".",
+              "endsPattern": "."
             }
           }
         ]

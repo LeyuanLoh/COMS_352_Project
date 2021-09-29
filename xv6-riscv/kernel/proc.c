@@ -48,12 +48,11 @@ void enqueue(struct proc *p)
 
   if (mlq->next == EMPTY)
   {
-    
 
     pinqtable->next = NPROC + offset;
     pinqtable->prev = NPROC + offset;
 
-   //Problem here
+    //Problem here
 
     mlq->next = pindex;
     mlq->prev = pindex;
@@ -89,6 +88,19 @@ struct proc *dequeue()
       struct proc *p;
       p = proc + q->next;
 
+      if (qindex == 63 && p->level == 1)
+      {
+        printf("Process with level: %d is on queue: 0", p->level - 1);
+      }
+      else if (qindex == 64 && p->level == 2)
+      {
+        printf("Process with level: %d is on queue: 1", p->level - 1);
+      }
+      else if (qindex == 65 && p->level == 3)
+      {
+        printf("Process with level: %d is on queue: 2", p->level - 1);
+      }
+
       struct qentry *qfirst;
       qfirst = qtable + q->next;
 
@@ -96,7 +108,12 @@ struct proc *dequeue()
       qsecond = qtable + qfirst->next;
 
       q->next = qfirst->next;
-      qsecond->prev = qfirst->prev;
+      qsecond->prev = qindex;
+
+      if (qfirst->prev != qindex)
+      {
+        printf("In Qtable, the previous of dequeuing process is not head.\n");
+      }
 
       if (q->next == qindex && q->prev == qindex)
       {
@@ -104,9 +121,15 @@ struct proc *dequeue()
         q->prev = EMPTY;
       }
 
+      //remove process from qtable
+
+      qfirst->next = EMPTY;
+
+      qfirst->prev = EMPTY;
+
       if (p->pid == 0)
       {
-        //printf("Pid = 0\n");
+        printf("Pid = 0\n");
         return 0;
       }
       else
@@ -150,6 +173,7 @@ void procinit(void)
   }
 
   //Leyuan & Lee
+  //Initialize qtable
   ticks = 0;
 
   struct qentry *q;
@@ -356,6 +380,7 @@ void userinit(void)
   safestrcpy(p->name, "initcode", sizeof(p->name));
   p->cwd = namei("/");
 
+  global_ticks = 0; //Leyuan & Lee
   p->state = RUNNABLE;
   //Leyuan & Lee
   enqueue(p);
@@ -648,6 +673,7 @@ void yield(void)
   global_ticks++;
   if (global_ticks % 32 == 0)
   {
+    // printf("\npriority booast \n");
     //first case queue 1 == empty
     //head of queue 1 => first element of queue 2
     //second case queue 1 != empty
@@ -661,12 +687,13 @@ void yield(void)
 
     if (Q3->next != EMPTY)
     {
+      uint64 lQ3 = Q3->prev;
+      uint64 fQ3 = Q3->next;
+      struct qentry *lq3QTable = qtable + lQ3;
+      struct qentry *fq3QTable = qtable + fQ3;
       if (Q2->next != EMPTY)
       {
-        uint64 lQ3 = Q3->prev;
-        uint64 fQ3 = Q3->next;
-        struct qentry *lq3QTable = qtable + lQ3;
-        struct qentry *fq3QTable = qtable + fQ3;
+
         uint64 lQ2 = Q2->prev;
         struct qentry *lq2QTable = qtable + lQ2;
         lq2QTable->next = fQ3;
@@ -679,6 +706,8 @@ void yield(void)
         //Q2 empty
         Q2->next = Q3->next;
         Q2->prev = Q3->prev;
+        lq3QTable->next = Q2 - qtable;
+        fq3QTable->prev = Q2 - qtable;
       }
       Q3->next = EMPTY;
       Q3->prev = EMPTY;
@@ -686,12 +715,13 @@ void yield(void)
 
     if (Q2->next != EMPTY)
     {
+      uint64 lQ2 = Q2->prev;
+      uint64 fQ2 = Q2->next;
+      struct qentry *lq2QTable = qtable + lQ2;
+      struct qentry *fq2QTable = qtable + fQ2;
       if (Q1->next != EMPTY)
       {
-        uint64 lQ2 = Q2->prev;
-        uint64 fQ2 = Q2->next;
-        struct qentry *lq2QTable = qtable + lQ2;
-        struct qentry *fq2QTable = qtable + fQ2;
+
         uint64 lQ1 = Q1->prev;
         struct qentry *lq1QTable = qtable + lQ1;
         lq1QTable->next = fQ2;
@@ -704,9 +734,17 @@ void yield(void)
         //Q1 empty
         Q1->next = Q2->next;
         Q1->prev = Q2->prev;
+        lq2QTable->next = Q1 - qtable;
+        fq2QTable->prev = Q1 - qtable;
       }
       Q2->next = EMPTY;
       Q2->prev = EMPTY;
+    }
+
+    for (p = proc; p < &proc[NPROC]; p++)
+    {
+      p->level = 1;
+      p->ticks = 0;
     }
   }
   p->ticks++;
